@@ -1,0 +1,55 @@
+/*
+ * This is a manifest file that'll be compiled into application.css, which will include all the files
+ * listed below.
+ *
+ * Any CSS and SCSS file within this directory, lib/assets/stylesheets, vendor/assets/stylesheets,
+ * or any plugin's vendor/assets/stylesheets directory can be referenced here using a relative path.
+ *
+ * You're free to add application-wide styles to this file and they'll appear at the bottom of the
+ * compiled file so the styles you add here take precedence over styles defined in any other CSS/SCSS
+ * files in this directory. Styles in this file should be added after the last require_* statement.
+ * It is generally better to create a new file per style scope.
+ *
+ *= require_tree .
+ *= require_self
+ */
+
+canvas {
+  margin-left:auto;
+  margin-right:auto;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+#showHideButton{
+  position:absolute;
+  top:15px;
+  left:15px;
+}
+#settings {
+  display: none;
+  position:absolute;
+  top:0;
+  left:0;
+  width:600px;
+  height:300px;
+  background-color: lightyellow;
+}
+.nav-pills {
+  margin-left: 110px;
+}
+.red .active a,
+.red .active a:hover {
+    background-color: orange !important;
+}
+.nav-pills > .active > a, .nav-pills > .active > a:hover {
+    background-color: red;
+}
+.colorOption.active{
+  background-color: lightgrey !important;
+  color: black !important;
+}
+.colorOption{
+  background-color: white !important;
+  color: black !important;
+  width:50%;
+}

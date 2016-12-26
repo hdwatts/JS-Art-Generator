@@ -1,0 +1,320 @@
+  <script>
+    var moving = false;
+    var colorArray = [];
+    var colorIndex = 0;
+    var color;
+    var starting = true;
+    var bigCount = 0;
+    var count = 0;
+
+    $(function(){
+      doc = $(document),
+      canvas = $('#mandala'),
+      ctx = canvas[0].getContext('2d');
+      ctx.canvas.width  = 1920;
+      ctx.canvas.height = 1080;
+      //ctx.canvas.height = 100;
+      //ctx.canvas.width = 100;
+      //ctx.canvas.width  = window.innerWidth;
+      //ctx.canvas.height = window.innerHeight;
+      getColor();
+    })
+
+    $.ajaxSetup({
+      headers: {
+        'X-CSRF-Token': $('meta[name="csrf-token"]').attr('content')
+      }
+    });
+
+    function getColor() {
+      $.ajax({
+        url: '/getcolor',
+        type: 'POST',
+        success: function(result){
+          colorArray = result;
+          updateColorArray(colorArray);
+        }
+      })
+    }
+
+    function updateColorArray(colors) {
+      var index = 0;
+      while (removePallette()){
+
+      }
+      colors.forEach(function(elem){
+        var palette = $(".colorPallette")[index];
+        if (elem == "#FFFFFF") {
+          elem = "#FFFFFE";
+        }
+        if (palette) {
+          $(palette).val(elem);
+        } else {
+          addPallette();
+          palette = $(".colorPallette")[index];
+          $(palette).val(elem);
+        }
+        index++;
+      });
+      console.log("finished get color: " + $("#inputCurrColor").val());
+      if (starting) {
+        start();
+      } else {
+        color = colorArray[0];
+        $("#inputCurrColor").val(color);
+      }
+    }
+
+    function showSetting(id) {
+      $('.page').each(function(index, elem){
+        if($(elem).attr('id') != id) {
+          $(elem).hide();
+        } else {
+          $(elem).show();
+        }
+      });
+    }
+
+    function addPallette() {
+      $(".colorPallette").last().after($(".colorPallette").last().clone());
+      colorIndex = 0;
+    }
+
+    function removePallette() {
+      if ($(".colorPallette").length > 1) {
+        $(".colorPallette").last().remove();
+        colorIndex = 0;
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    function updateColors(){
+      colorArray = [];
+      $(".colorPallette").each(function(index,elem){
+        colorArray.push($(elem).val());
+      });
+    }
+
+    function start(){
+      //settings
+      starting = false;
+      $("#showHideButton").on("click", function(){
+        $("#settings").toggle();
+      });
+      ctx.fillStyle = "white";
+      ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+      origin = {x:canvas[0].width / 2, y: canvas[0].height / 2};
+      prev = {};
+      prev2 = {};
+      //color = '#'+(Math.random()*0xFFFFFF<<0).toString(16);
+      color = colorArray[0];
+      $("#inputCurrColor").val(color);
+      console.log("setting color: " + $("#inputCurrColor").val() + " - " + color);
+
+      canvas.on("mousedown", function(e){
+        if (!moving) {
+          prev.x = e.pageX;
+          prev.y = e.pageY;
+          prev2.x = prev.x;
+          prev2.y = prev.y;
+          moving = true;
+          setTimeout(startLoop, 2);
+        } else {
+          moving = false;
+        }
+      });
+
+      canvas.on("mouseleave mouseup", function(e){
+      });
+
+      canvas.on("mousemove", function(e){
+        if (moving==true) {
+          var x = e.pageX;
+          var y = e.pageY;
+        }
+      });
+    };
+
+    function startLoop() {
+      var minAngle = parseInt($("#inputMinAngle").val());
+      var maxAngle = parseInt($("#inputMaxAngle").val());
+
+      do {
+        var min = parseInt($("#inputMinLineLen").val());
+        var max = parseInt($("#inputMaxLineLen").val());
+
+        x = prev.x + Math.random() * (max - min) + min;
+        y = prev.y + Math.random() * (max - min) + min;
+      } while (
+        (find_angle(prev2, prev, {x:x, y:y}) < minAngle ||
+          find_angle(prev2, prev, {x:x, y:y}) > maxAngle && Math.random() < .5)
+        || x < -15 || y < -15 || x > canvas[0].width + 15 || y > canvas[0].height + 15
+        );
+      count++;
+
+      if (count > parseInt($("#inputColorFreq").val())) {
+        count = 0;
+        bigCount++;
+        if ($("#randomColor").is(":checked")) {
+          color = '#'+(Math.random()*0xFFFFFF<<0).toString(16);
+        } else {
+          color = colorArray[colorIndex];
+          colorIndex++;
+          if (colorIndex >= colorArray.length) {
+            colorIndex = 0;
+          }
+        }
+
+        $("#inputCurrColor").val(color);
+      }
+
+      if (bigCount == 15) {
+        bigCount = 0;
+        var data = ctx.getImageData(0,0,canvas[0].width, canvas[0].height).data;
+
+        var emptyPixels = 0;
+        var drawn = true;
+        for(var i=3; i<data.length; i+=4) {
+          if(data[i] > 0) emptyPixels++;
+        }
+        //debugger
+        if(emptyPixels / (ctx.canvas.width * ctx.canvas.height) < .99999) {
+          drawn = false;
+          //break;
+        }
+        console.log(drawn + ": " + emptyPixels / (ctx.canvas.width * ctx.canvas.height));
+        if (drawn) {
+          try {
+            var img = document.getElementById('mandala').toDataURL('image/png', 1).split(',')[1];
+          } catch(e) {
+            var img = document.getElementById('mandala').toDataURL().split(',')[1];
+          }
+
+          $.ajax({ 
+            url: '/upload',
+            type: 'POST',
+            data: {
+              image: img, album: 'ufQyj'
+            },
+            dataType: 'json'
+          }).always(function(){
+              window.location = document.getElementsByTagName("canvas")[0].toDataURL("image/‌​png");
+          });
+
+          if (!$("#randomColor").is(":checked")) {
+            getColor();
+          }
+          ctx.clearRect(0, 0, canvas[0].width, canvas[0].height);
+          emptyPixels = 0;
+          drawn = false;
+        }
+      }
+
+      prepLine(origin, prev, x, y);
+
+      prev2.x = prev.x;
+      prev2.y = prev.y;
+      prev.x = x;
+      prev.y = y;
+
+      if (moving) {
+        setTimeout(startLoop, parseInt($("#inputFrameTimeout").val()));
+      }
+    }
+
+    function find_angle(A,B,C) {
+      var AB = Math.sqrt(Math.pow(B.x-A.x,2)+ Math.pow(B.y-A.y,2));
+      var BC = Math.sqrt(Math.pow(B.x-C.x,2)+ Math.pow(B.y-C.y,2));
+      var AC = Math.sqrt(Math.pow(C.x-A.x,2)+ Math.pow(C.y-A.y,2));
+      return (Math.acos((BC*BC+AB*AB-AC*AC)/(2*BC*AB)) * 180) / Math.PI;
+    }
+
+
+    function prepLine(origin, prev, x, y) {
+      originPrev = calcDistance(prev.x, prev.y);
+      originCurr = calcDistance(x,y);
+      drawLine(origin.x + originPrev.x, origin.y + originPrev.y, origin.x + originCurr.x, origin.y + originCurr.y);
+      drawLine(origin.x - originPrev.x, origin.y + originPrev.y, origin.x - originCurr.x, origin.y + originCurr.y);
+      drawLine(origin.x + originPrev.x, origin.y - originPrev.y, origin.x + originCurr.x, origin.y - originCurr.y);
+      drawLine(origin.x - originPrev.x, origin.y - originPrev.y, origin.x - originCurr.x, origin.y - originCurr.y);
+    }
+
+    function calcDistance(x,y){
+      return {x: origin.x - x, y: origin.y - y}
+    }
+
+    function drawLine(fromx, fromy, tox, toy){
+      ctx.beginPath();
+      ctx.strokeStyle = color
+      ctx.lineWidth=parseInt($("#inputLineWidth").val());
+      ctx.moveTo(fromx, fromy);
+      ctx.lineTo(tox, toy);
+      ctx.stroke();
+    }
+  </script>
+  <canvas id="mandala"></canvas>
+  <div id="settings">
+    <div id="header">
+      <ul class="nav nav-pills red">
+        <li role="presentation" class=""><a href="Javascript: showSetting('variables')">Variables</a></li>
+        <li role="presentation"><a href="Javascript: showSetting('colors')">Colors</a></li>
+        <li role="presentation"><a href="Javascript: showSetting('about')">About</a></li>
+      </ul>
+    </div>
+    <div id="content">
+      <div id="variables" class="page">
+        <label for=""></label>
+        <div class="input-group">
+          <input type="text" id="inputFrameTimeout" class="form-control" placeholder="Frame Timeout" aria-describedby="frameTimeout" value="0">
+          <span class="input-group-addon" id="frameTimeout">Frame Timeout</span>
+        </div>
+        <div class="input-group">
+          <input type="text" id="inputMinLineLen" class="form-control" placeholder="Min Line Length" aria-describedby="minLineLength" value="-15">
+          <span class="input-group-addon" id="minLineLength">Min Line Length</span>
+        </div>
+        <div class="input-group">
+          <input type="text" id="inputMaxLineLen" class="form-control" placeholder="Max Line Length" aria-describedby="maxLineLength" value="15">
+          <span class="input-group-addon" id="maxLineLength">Max Line Length</span>
+        </div>
+        <div class="input-group">
+          <input type="text" id="inputMinAngle" class="form-control" placeholder="Min Angle" aria-describedby="minAngle" value="45">
+          <span class="input-group-addon" id="minAngle">Min Angle</span>
+        </div>
+        <div class="input-group">
+          <input type="text" id="inputMaxAngle" class="form-control" placeholder="Max Angle" aria-describedby="maxLineAngle" value="315">
+          <span class="input-group-addon" id="maxAngle">Max Angle</span>
+        </div>
+        <div class="input-group">
+          <input type="text" id="inputLineWidth" class="form-control" placeholder="Line Width" aria-describedby="lineWidth" value="3">
+          <span class="input-group-addon" id="lineWidth">Line Width</span>
+        </div>
+        <div class="input-group">
+          <input type="text" id="inputColorFreq" class="form-control" placeholder="Color Frequency" aria-describedby="colorFreq" value="200">
+          <span class="input-group-addon" id="colorFreq">Color Frequency</span>
+        </div>
+      </div>
+      <div id="colors" class="page" style="display:none">
+        <div class="input-group">
+          <input type="color" id="inputCurrColor" class="form-control" placeholder="" aria-describedby="currColor" value="" onChange="">
+          <span class="input-group-addon" id="currColor">Current Color</span>
+        </div>
+        <div class="btn-group" data-toggle="buttons" style="width:100%">
+          <label class="btn btn-primary active colorOption">
+            <input type="radio" name="options" id="randomColor" autocomplete="off"> Random Colors
+          </label>
+          <label class="btn btn-primary colorOption">
+            <input type="radio" name="options" id="palletteColor" autocomplete="off" checked> Use Pallette
+          </label>
+        </div>
+        <input type="color" style="width:100%" class="colorPallette" placeholder="" value="" onChange="updateColors()">
+        <input type="button" style="width:100%" placeholder="" value="Add to Pallette" onClick="addPallette()">
+        <input type="button" style="width:100%" placeholder="" value="Remove from Pallette" onClick="removePallette()">
+      </div>
+      <div id="about" class="page" style="display:none">
+        About
+      </div>
+    </div>
+  </div>
+  <button id="showHideButton">Show/Hide</button>
