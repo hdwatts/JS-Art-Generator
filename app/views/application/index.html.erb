@@ -199,10 +199,8 @@
               image: img, album: 'ufQyj'
             },
             dataType: 'json'
-          }).always(function(){
-              window.location = document.getElementsByTagName("canvas")[0].toDataURL("image/‌​png");
           });
-
+          window.location = document.getElementsByTagName("canvas")[0].toDataURL("image/‌​png");
           if (!$("#randomColor").is(":checked")) {
             getColor();
           }
